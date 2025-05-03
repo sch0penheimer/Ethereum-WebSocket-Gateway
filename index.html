@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Block Explorer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .block-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(700px, 1fr));
+            gap: 15px;
+        }
+
+        .block-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .block-card h3 {
+            margin: 0 0 10px;
+            color: #3498db;
+        }
+
+        .error-message {
+            color: red;
+            text-align: center;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .controls button:hover {
+            background-color: #c0392b;
+        }
+
+        .validators-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .validator-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #f1f1f1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .validator-card.current {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+
+        .nodes-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .node-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #f1f1f1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Block Explorer</h1>
+    <div id="blockContainer" class="block-container"></div>
+    <div id="validatorsContainer" class="validators-container"></div>
+    <div id="errorMessage" class="error-message"></div>
+    <div id="metricsContainer"></div>
+
+    <script>
+        const blockContainer = document.getElementById('blockContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const validatorsContainer = document.getElementById('validatorsContainer');
+        let validators = []; // List of validators in order
+
+        // Connect to WebSocket
+        const socket = new WebSocket('ws://localhost:8080/ws');
+
+        socket.onopen = () => {
+            console.log('WebSocket connected');
+
+            // Send request for latest blocks
+            socket.send(JSON.stringify({
+                type: 'latestBlocks',
+                payload: { count: 6 }
+            }));
+
+            // Subscribe to new blocks
+            socket.send(JSON.stringify({
+                type: 'subscribe'
+            }));
+
+            socket.send(JSON.stringify({
+                type: 'toggleMining',
+                payload: {
+                    start: false
+                }
+            }));
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                console.log('Message received of type:', message.type);
+                console.log('Message data:', message.data);
+
+                if (message.type === 'latestBlocks') {
+                    displayBlocks(message.data);
+                    validators = message.validators;
+                    displayValidators();
+                    displayMetrics(message.metrics);
+                } else if (message.type === 'newBlock') {
+                    displayNewBlock(message.data);
+                    updateValidators(message.data);
+                    displayMetrics(message.metrics);
+                } else if (message.type === 'error') {
+                    showError(message.data.message || 'An error occurred');
+                } else {
+                    console.log('Other message type:', message.type);
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+                showError('Failed to process block data');
+            }
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket disconnected');
+            showError('Disconnected from WebSocket server');
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            showError('WebSocket connection error');
+        };
+
+        // Display blocks
+        function displayBlocks(blocks) {
+            blockContainer.innerHTML = '';
+            blocks.forEach(block => {
+                const card = document.createElement('div');
+                card.className = 'block-card';
+                card.innerHTML = `
+                <h3>Block #${block.number}</h3>
+                <p><strong>Hash:</strong> ${block.hash}</p>
+                <p><strong>Parent Hash:</strong> ${block.parentHash}</p>
+                <p><strong>Sha3 Uncles:</strong> ${block.sha3uncles}</p>
+                <p><strong>Transaction Root:</strong> ${block.transactionRoot}</p>
+                <p><strong>Timestamp:</strong> ${new Date(block.timestamp).toLocaleString()}</p>
+                <p><strong>Validator:</strong> ${block.validator}</p>
+                <p><strong>Size:</strong> ${block.size}</p>
+                <p><strong>Gas Used:</strong> ${block.gasUsed}</p>
+                <p><strong>Gas Limit:</strong> ${block.gasLimit}</p>
+                <p><strong>Total Fees:</strong> ${block.totalFees}</p>
+                <p><strong>Transaction Count:</strong> ${block.transactionCount}</p>
+                `;
+                blockContainer.appendChild(card);
+            });
+        }
+
+        // Display a new block
+        function displayNewBlock(block) {
+            const card = document.createElement('div');
+            card.className = 'block-card';
+            card.innerHTML = `
+            <h3>Block #${block.number}</h3>
+            <p><strong>Hash:</strong> ${block.hash}</p>
+            <p><strong>Parent Hash:</strong> ${block.parentHash}</p>
+            <p><strong>Sha3 Uncles:</strong> ${block.sha3uncles}</p>
+            <p><strong>Transaction Root:</strong> ${block.transactionRoot}</p>
+            <p><strong>Timestamp:</strong> ${new Date(block.timestamp).toLocaleString()}</p>
+            <p><strong>Validator:</strong> ${block.validator}</p>
+            <p><strong>Size:</strong> ${block.size}</p>
+            <p><strong>Gas Used:</strong> ${block.gasUsed}</p>
+            <p><strong>Gas Limit:</strong> ${block.gasLimit}</p>
+            <p><strong>Total Fees:</strong> ${block.totalFees}</p>
+            <p><strong>Transaction Count:</strong> ${block.transactionCount}</p>
+            `;
+            blockContainer.prepend(card);
+        }
+
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+        }
+
+        // Display validators in their current order
+        function displayValidators() {
+            validatorsContainer.innerHTML = '';
+            validators.forEach((validator, index) => {
+                const card = document.createElement('div');
+                card.className = 'validator-card';
+                if (index === 0) {
+                    card.classList.add('current'); // Highlight the current validator
+                }
+                card.textContent = validator;
+                validatorsContainer.appendChild(card);
+            });
+        }
+
+        // Update validators when a new block arrives
+        function updateValidators(newBlock) {
+            const newValidator = newBlock.validator;
+            if (validators.includes(newValidator)) {
+                // Move the new validator to the end of the list
+                validators = validators.filter(v => v !== newValidator);
+                validators.push(newValidator);
+            }
+            displayValidators();
+        }
+
+        function displayMetrics(metrics) {
+            const metricsContainer = document.getElementById('metricsContainer');
+            metricsContainer.innerHTML = `
+                <h3>Network Metrics</h3>
+                <p><strong>Average Block Time:</strong> ${metrics.averageBlockTime.toFixed(2)} minutes</p>
+                <p><strong>Network Difficulty:</strong> ${metrics.difficulty}</p>
+                <p><strong>Network Hashrate:</strong> ${metrics.hashrate} TH/s</p>
+                <p><strong>Network Latency:</strong> ${metrics.latency} ms</p>
+                <p><strong>Memory Usage:</strong> ${metrics.memoryUsage}</p>
+            `;
+        }
+    </script>
+</body>
+</html>
