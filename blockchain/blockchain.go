@@ -96,12 +96,14 @@ func (bf *BlockFetcher) GetBlockByNumber(ctx context.Context, number *big.Int) (
     totalFees := calculateTotalFees(block)
     txs := convertTransactions(block.Transactions())
 
-    // Fetch the validator using clique_getSigner
+    /**
+      *  Validator / Signer fetching using clique_getSigner
+      */
     var validator string
     err = bf.RPCClient.CallContext(ctx, &validator, "clique_getSigner", block.Hash().Hex())
     if err != nil {
         log.Printf("Failed to fetch validator for block %d: %v", number, err)
-        validator = "0x0000000000000000000000000000000000000000" // Default if not found
+        validator = "0x0000000000000000000000000000000000000000"
     }
 
     return &Block{
@@ -171,7 +173,8 @@ func convertTransactions(txs types.Transactions) []BlockTransaction {
     return result
 }
 
-/** MiningController methods **/
+/****************************************** MiningController methods ******************************************/
+/**************************************************************************************************************/
 
 func NewMiningController(nodeURLs []string) (*MiningController, error) {
     mc := &MiningController{}
@@ -224,21 +227,21 @@ func (mc *MiningController) GetMiningStatus(ctx context.Context) ([]bool, error)
 func (bf *BlockFetcher) GetNetworkMetrics(ctx context.Context) (map[string]interface{}, error) {
     metrics := make(map[string]interface{})
 
-    // Fetch average block time
+
     blockTime, err := bf.calculateAverageBlockTime(ctx)
     if err != nil {
         return nil, fmt.Errorf("failed to calculate average block time: %v", err)
     }
     metrics["averageBlockTime"] = blockTime
 
-    // Fetch the latest block to get the difficulty
+
     latestBlock, err := bf.Client.BlockByNumber(ctx, nil)
     if err != nil {
         return nil, fmt.Errorf("failed to fetch latest block: %v", err)
     }
     metrics["difficulty"] = latestBlock.Difficulty().String()
 
-    // Fetch network hashrate
+
     var hashrate string
     err = bf.RPCClient.CallContext(ctx, &hashrate, "eth_hashrate")
     if err != nil {
@@ -246,11 +249,11 @@ func (bf *BlockFetcher) GetNetworkMetrics(ctx context.Context) (map[string]inter
     }
     metrics["hashrate"] = hashrate
 
-    // Fetch network latency (mocked for now)
+
     latency := bf.calculateNetworkLatency()
     metrics["latency"] = latency
 
-    // Fetch memory usage
+
     var memStats runtime.MemStats
     runtime.ReadMemStats(&memStats)
     metrics["memoryUsage"] = fmt.Sprintf("%.2f MB", float64(memStats.Alloc)/1024/1024)
@@ -258,29 +261,26 @@ func (bf *BlockFetcher) GetNetworkMetrics(ctx context.Context) (map[string]inter
     return metrics, nil
 }
 
-// Helper to calculate average block time
+
 func (bf *BlockFetcher) calculateAverageBlockTime(ctx context.Context) (float64, error) {
-    // Fetch the latest block
     latestBlock, err := bf.Client.BlockByNumber(ctx, nil)
     if err != nil {
         return 0, err
     }
 
-    // Fetch the block 100 blocks ago
-    previousBlockNumber := new(big.Int).Sub(latestBlock.Number(), big.NewInt(50))
+    previousBlockNumber := new(big.Int).Sub(latestBlock.Number(), big.NewInt(25))
     previousBlock, err := bf.Client.BlockByNumber(ctx, previousBlockNumber)
     if err != nil {
         return 0, err
     }
 
-    // Calculate the average block time
     timeDiff := latestBlock.Time() - previousBlock.Time()
     averageBlockTime := float64(timeDiff) / 100.0
     return averageBlockTime / 60.0, nil
 }
 
-// Mocked network latency calculation
 func (bf *BlockFetcher) calculateNetworkLatency() float64 {
-    // Simulate a network latency calculation (e.g., ping to the node)
-    return 50.0 // Mocked latency in ms
+    //* (INCOMING: ping to the node) *//
+    /** FOR NOW its is mocked by 50ms **/
+    return 50.0
 }

@@ -130,6 +130,7 @@
                 type: 'subscribe'
             }));
 
+            //** Boolean Mining Toggle **//
             socket.send(JSON.stringify({
                 type: 'toggleMining',
                 payload: {
@@ -146,12 +147,9 @@
 
                 if (message.type === 'latestBlocks') {
                     displayBlocks(message.data);
-                    validators = message.validators;
-                    displayValidators();
                     displayMetrics(message.metrics);
                 } else if (message.type === 'newBlock') {
                     displayNewBlock(message.data);
-                    updateValidators(message.data);
                     displayMetrics(message.metrics);
                 } else if (message.type === 'error') {
                     showError(message.data.message || 'An error occurred');
@@ -222,31 +220,6 @@
         // Show error message
         function showError(message) {
             errorMessage.textContent = message;
-        }
-
-        // Display validators in their current order
-        function displayValidators() {
-            validatorsContainer.innerHTML = '';
-            validators.forEach((validator, index) => {
-                const card = document.createElement('div');
-                card.className = 'validator-card';
-                if (index === 0) {
-                    card.classList.add('current'); // Highlight the current validator
-                }
-                card.textContent = validator;
-                validatorsContainer.appendChild(card);
-            });
-        }
-
-        // Update validators when a new block arrives
-        function updateValidators(newBlock) {
-            const newValidator = newBlock.validator;
-            if (validators.includes(newValidator)) {
-                // Move the new validator to the end of the list
-                validators = validators.filter(v => v !== newValidator);
-                validators.push(newValidator);
-            }
-            displayValidators();
         }
 
         function displayMetrics(metrics) {
