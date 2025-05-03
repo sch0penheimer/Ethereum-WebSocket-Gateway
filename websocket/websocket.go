@@ -132,7 +132,6 @@ func (h *WSHandler) handleSubscription(client *Client) {
     h.mu.Lock()
     defer h.mu.Unlock()
 
-    // Toggle the subscription status
     if h.subscriptions[client] {
         h.subscriptions[client] = false
         log.Printf("Client unsubscribed from new blocks: %v", client.conn.RemoteAddr())
@@ -141,7 +140,7 @@ func (h *WSHandler) handleSubscription(client *Client) {
         log.Printf("Client subscribed to new blocks: %v", client.conn.RemoteAddr())
     }
 
-    // Send confirmation to the client
+    
     response := map[string]interface{}{
         "type":    "subscribe",
         "status":  h.subscriptions[client],
@@ -298,7 +297,7 @@ func (h *WSHandler) run() {
         case client := <-h.register:
             h.mu.Lock()
             h.clients[client] = true
-            h.subscriptions[client] = false // Default to unsubscribed
+            h.subscriptions[client] = false
             h.mu.Unlock()
             log.Printf("Client registered: %v", client.conn.RemoteAddr())
         case client := <-h.unregister:
