@@ -169,13 +169,6 @@ func (h *WSHandler) handleLatestBlocks(conn *websocket.Conn, msg WSMessage) {
         return
     }
 
-    validators, err := h.blockFetcher.GetValidators(context.Background())
-    if err != nil {
-        log.Printf("Error fetching validators: %v", err)
-        sendError(conn, "failed to fetch validators")
-        return
-    }
-
     metrics, err := h.blockFetcher.GetNetworkMetrics(context.Background())
     if err != nil {
         log.Printf("Error fetching network metrics: %v", err)
@@ -186,7 +179,6 @@ func (h *WSHandler) handleLatestBlocks(conn *websocket.Conn, msg WSMessage) {
     response := map[string]interface{}{
         "type":       "latestBlocks",
         "data":       blocks,
-        "validators": validators,
         "metrics":    metrics,
     }
 
@@ -245,9 +237,13 @@ func (h *WSHandler) watchNewBlocks() {
         }
         defer sub.Unsubscribe()
 
+        log.Println("Subscribed to new block headers")
+
         for {
             select {
             case header := <-headers:
+                log.Printf("New block header received: %v", header.Number)
+
                 block, err := h.blockFetcher.GetBlockByNumber(context.Background(), header.Number)
                 if err != nil {
                     log.Printf("Error fetching block details: %v", err)
@@ -277,8 +273,9 @@ func (h *WSHandler) watchNewBlocks() {
                     if subscribed {
                         select {
                         case client.send <- msg:
+                            log.Printf("New block sent to client: %v", client.conn.RemoteAddr())
                         default:
-                            log.Printf("Client not ready to receive new blocks")
+                            log.Printf("Client not ready to receive new blocks: %v", client.conn.RemoteAddr())
                         }
                     }
                 }
