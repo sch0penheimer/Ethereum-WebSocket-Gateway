@@ -100,11 +100,38 @@ When subscribed, clients automatically receive new block notifications:
 
 The system uses Ethereum's `SubscribeNewHead()` to monitor new blocks and broadcasts them to all subscribed clients with full block details and network metrics.
 
+Looking at your request, you want markdown documentation for the **Block Structure** and **Network Metrics** data structures from the Ethereum WebSocket Gateway codebase.
+
 ## Data Structures
 
-### Block Structure [9](#0-8) 
+### Block Structure
 
-### Network Metrics [10](#0-9) 
+The `Block` struct represents a complete Ethereum block with comprehensive metadata and transaction details:
+
+**Key Fields:**
+- **Block Identifiers**: `Number`, `Hash`, `ParentHash` for blockchain navigation
+- **Merkle Roots**: `Sha3Uncles`, `TransactionRoot` for cryptographic verification  
+- **Consensus Data**: `Validator` (fetched via `clique_getSigner` RPC), `Difficulty`
+- **Gas Metrics**: `GasUsed`, `GasLimit` for network capacity tracking
+- **Transaction Data**: `Transactions` array with detailed transaction information, `TransactionCount`, `TotalFees`
+- **Block Metadata**: `Timestamp`, `Size` for block analysis
+
+**Associated Transaction Structure:**
+
+The block structure is populated by `GetBlockByNumber()` which fetches raw Ethereum block data and enriches it with calculated fields like `TotalFees` and validator information .
+
+### Network Metrics
+
+The network metrics provide real-time blockchain performance and system health data returned by `GetNetworkMetrics()`:
+
+**Metrics Included:**
+- **`averageBlockTime`**: Calculated from the last 25 blocks, returned in minutes
+- **`difficulty`**: Current network difficulty from the latest block
+- **`hashrate`**: Network hashrate via `eth_hashrate` RPC call
+- **`latency`**: Network latency (currently mocked at 50ms)
+- **`memoryUsage`**: Gateway application memory consumption in MB
+
+These metrics are included in both `latestBlocks` responses and real-time `newBlock` broadcasts to WebSocket clients .
 
 ## Concurrency Model
 
