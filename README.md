@@ -4,7 +4,7 @@ A real-time WebSocket gateway service that provides unified access to multiple E
 
 ## Overview
 
-The Ethereum WebSocket Gateway implements a hub-and-spoke architecture where a central gateway service manages connections between WebSocket clients and multiple Ethereum nodes. [1](#0-0)  The system uses a dual-protocol strategy: WebSocket connections for real-time data streaming and HTTP connections for mining control operations.
+The Ethereum WebSocket Gateway implements a hub-and-spoke architecture where a central gateway service manages connections between WebSocket clients and multiple Ethereum nodes. The system uses a dual-protocol strategy: WebSocket connections for real-time data streaming and HTTP connections for mining control operations.
 
 ## Features
 
@@ -21,23 +21,23 @@ The Ethereum WebSocket Gateway implements a hub-and-spoke architecture where a c
 
 The system consists of three primary components:
 
-1. **Main Application** (`main.go`): [2](#0-1) 
+1. **Main Application** (`main.go`): 
    - HTTP server setup and routing
    - Command-line argument parsing for node configuration
    - Component initialization and dependency injection
 
-2. **WebSocket Handler** (`websocket/websocket.go`): [3](#0-2) 
+2. **WebSocket Handler** (`websocket/websocket.go`):
    - Client connection management
    - Message routing and processing
    - Real-time block subscription handling
 
-3. **Blockchain Services** (`blockchain/blockchain.go`): [4](#0-3) 
+3. **Blockchain Services** (`blockchain/blockchain.go`): 
    - `BlockFetcher`: Ethereum node interaction for block data
    - `MiningController`: Multi-node mining operations
 
 ### Node Configuration
 
-The gateway supports dynamic configuration of multiple Ethereum nodes: [5](#0-4) 
+The gateway supports dynamic configuration of multiple Ethereum nodes: 
 
 - First node (index 0): WebSocket connection for block subscriptions
 - Additional nodes: HTTP connections for mining control only
@@ -68,7 +68,7 @@ The server starts on port 8080 with the following endpoints:
 
 ### Message Types
 
-The gateway processes four distinct message types: [6](#0-5) 
+The gateway processes four distinct message types:
 
 #### 1. Subscribe to New Blocks
 ```json
@@ -80,7 +80,7 @@ Response: `{"type": "subscribe", "status": true, "message": "Subscription status
 ```json
 {"type": "latestblocks", "payload": {"count": 5}}
 ```
-Response: [7](#0-6) 
+Response: 
 
 #### 3. Get Mining Status
 ```json
@@ -96,7 +96,7 @@ Response: `{"type": "toggleMining", "data": [true, true, true]}`
 
 ### Real-time Block Broadcasting
 
-When subscribed, clients automatically receive new block notifications: [8](#0-7) 
+When subscribed, clients automatically receive new block notifications:
 
 The system uses Ethereum's `SubscribeNewHead()` to monitor new blocks and broadcasts them to all subscribed clients with full block details and network metrics.
 
@@ -108,7 +108,7 @@ The system uses Ethereum's `SubscribeNewHead()` to monitor new blocks and broadc
 
 ## Concurrency Model
 
-The gateway implements a concurrent architecture with dedicated goroutines: [11](#0-10) 
+The gateway implements a concurrent architecture with dedicated goroutines:
 
 - `run()`: Client registration/unregistration management
 - `watchNewBlocks()`: Real-time block subscription handling  
@@ -132,7 +132,7 @@ The gateway implements a concurrent architecture with dedicated goroutines: [11]
 
 ## Notes
 
-The system is designed for Ethereum networks using the Clique consensus mechanism, as evidenced by the validator fetching using `clique_getSigner` RPC calls. [12](#0-11)  The first node in the configuration must support WebSocket connections for real-time block subscriptions, while additional nodes only require HTTP RPC access for mining control operations.
+The system is designed for Ethereum networks using the Clique consensus mechanism, as evidenced by the validator fetching using `clique_getSigner` RPC calls. The first node in the configuration must support WebSocket connections for real-time block subscriptions, while additional nodes only require HTTP RPC access for mining control operations.
 
 Associated Wiki:
 - [Wiki (sch0penheimer/Ethereum-WebSocket-Gateway)](https://deepwiki.com/sch0penheimer/Ethereum-WebSocket-Gateway)
