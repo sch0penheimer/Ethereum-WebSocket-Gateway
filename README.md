@@ -100,8 +100,6 @@ When subscribed, clients automatically receive new block notifications:
 
 The system uses Ethereum's `SubscribeNewHead()` to monitor new blocks and broadcasts them to all subscribed clients with full block details and network metrics.
 
-Looking at your request, you want markdown documentation for the **Block Structure** and **Network Metrics** data structures from the Ethereum WebSocket Gateway codebase.
-
 ## Data Structures
 
 ### Block Structure
@@ -159,7 +157,7 @@ The gateway implements a concurrent architecture with dedicated goroutines:
 
 ## Notes
 
-The system is designed for Ethereum networks using the Clique consensus mechanism, as evidenced by the validator fetching using `clique_getSigner` RPC calls. The first node in the configuration must support WebSocket connections for real-time block subscriptions, while additional nodes only require HTTP RPC access for mining control operations.
+The system is designed for Ethereum networks using the Clique consensus mechanism. The first node in the configuration must support WebSocket connections for real-time block subscriptions, while additional nodes only require HTTP RPC access for mining control operations.
 
 Associated Wiki:
 - [Wiki (sch0penheimer/Ethereum-WebSocket-Gateway)](https://deepwiki.com/sch0penheimer/Ethereum-WebSocket-Gateway)
