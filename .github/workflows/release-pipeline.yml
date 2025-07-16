@@ -8,14 +8,9 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build binaries
+  build-linux:
+    name: Build Linux GUI binary
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        goos: [linux, windows]
-        goarch: [amd64]
 
     steps:
       - name: Checkout Code
@@ -30,17 +25,44 @@ jobs:
         run: go mod download
 
       - name: Install Linux GUI build dependencies
-        if: matrix.goos == 'linux'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
 
-      - name: Build GUI Binaries
+      - name: Build Linux GUI Binary
         run: |
           mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=1 go build -o dist/eth-ws-app-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} main_gui.go
+          CGO_ENABLED=1 go build -o dist/blockchain-gateway-gui-linux-amd64 main_gui.go
 
-      - name: Upload Binaries To The Release
+      - name: Upload Linux Binary To The Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: dist/blockchain-gateway-gui-linux-amd64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build Windows GUI binary
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build Windows GUI Binary
+        run: |
+          mkdir dist
+          go build -o dist/blockchain-gateway-gui-windows-amd64.exe main_gui.go
+
+      - name: Upload Windows Binary To The Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/blockchain-gateway-gui-windows-amd64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
