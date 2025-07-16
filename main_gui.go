@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -58,19 +59,21 @@ func main() {
 	})
 
 	//-- Start/Stop buttons --//
-	startBtn := widget.NewButton("Start Gateway", func() {
+	var startBtn, stopBtn *widget.Button
+
+	startBtn = widget.NewButton("Start Gateway", func() {
 		//- Validate input -//
 		nodeCount, err := strconv.Atoi(nodeCountEntry.Text)
 		if err != nil || nodeCount <= 0 {
 			dialog.ShowError(
-				fyne.NewError("Invalid Input", "Node count must be a positive integer."), w)
+				errors.New("Node count must be a positive integer."), w)
 			return
 		}
 		addresses := strings.Split(nodeAddressesEntry.Text, ",")
 		ports := strings.Split(nodePortsEntry.Text, ",")
 		if len(addresses) != nodeCount || len(ports) != nodeCount {
 			dialog.ShowError(
-				fyne.NewError("Invalid Input", "Number of addresses and ports must match node count."), w)
+				errors.New("Number of addresses and ports must match node count."), w)
 			return
 		}
 		cfg := gateway.GatewayConfig{
@@ -84,7 +87,7 @@ func main() {
 			statusLabel.SetText("Status: error")
 			appendLog(fmt.Sprintf("[ERROR] %s", gwErr.Error()))
 			dialog.ShowError(
-				fyne.NewError("Gateway Error", gwErr.Error()), w)
+				errors.New(gwErr.Error()), w)
 			return
 		}
 		gw.Start()
@@ -93,7 +96,7 @@ func main() {
 		startBtn.Disable()
 		stopBtn.Enable()
 	})
-	stopBtn := widget.NewButton("Stop Gateway", func() {
+	stopBtn = widget.NewButton("Stop Gateway", func() {
 		if gw != nil {
 			gw.Stop()
 			statusLabel.SetText(gw.Status())
