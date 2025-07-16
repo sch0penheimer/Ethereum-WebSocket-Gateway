@@ -1,15 +1,27 @@
+/*
+==========================================================================================
+  File:        main.go
+  Last Update: 2024-05-18
+  Author:      Haitam Bidiouane (@sh0penheimer)
+  Ownership:   © Haitam Bidiouane. All rights reserved.
+------------------------------------------------------------------------------------------
+  Scope:
+    CLI entry point for the blockchain websocket gateway. Parses command-line flags,
+    initializes the Gateway orchestration layer, and starts the HTTP server for websocket
+    and health endpoints. Designed to be used as a CLI or as a reference for GUI startup.
+==========================================================================================
+*/
+
 package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/sch0penheimer/eth-ws-server/blockchain"
-	"github.com/sch0penheimer/eth-ws-server/websocket"
+	"github.com/sch0penheimer/eth-ws-server/internal/gateway"
 )
 
 func main() {
@@ -32,33 +44,21 @@ func main() {
 		log.Fatalf("The number of addresses (%d) and ports (%d) must match the node count (%d).", len(addressList), len(portList), *nodeCount)
 	}
 
-	nodeURLs := make([]string, *nodeCount)
-	for i := 0; i < *nodeCount; i++ {
-		if i == 0 {
-			nodeURLs[i] = fmt.Sprintf("ws://%s:%s", addressList[i], portList[i])
-		} else {
-			nodeURLs[i] = fmt.Sprintf("http://%s:%s", addressList[i], portList[i])
-		}
+	cfg := gateway.GatewayConfig{
+		NodeCount:     *nodeCount,
+		NodeAddresses: addressList,
+		NodePorts:     portList,
 	}
-
-	log.Printf("Using the following node URLs: %v", nodeURLs)
-
-	// Initialize the mining controller
-	miningController, err := blockchain.NewMiningController(nodeURLs)
+	gw, err := gateway.NewGateway(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize mining controller: %v", err)
+		log.Fatalf("Failed to initialize gateway: %v", err)
 	}
-
-	// Initialize the blockchain client and WebSocket handler
-	blockFetcher, err := blockchain.NewBlockFetcher(nodeURLs[0])
-	if err != nil {
-		log.Fatalf("Failed to initialize blockchain client: %v", err)
-	}
-	wsHandler := websocket.NewWSHandler(blockFetcher, miningController)
+	gw.Start()
+	log.Println(gw.Status())
 
 	// Set up the HTTP server
 	r := mux.NewRouter()
-	r.HandleFunc("/ws", wsHandler.HandleConnections)
+	r.HandleFunc("/ws", gw.WSHandler().HandleConnections)
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
