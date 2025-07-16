@@ -8,13 +8,14 @@
   Scope:
     GUI entry point for the blockchain websocket gateway. Launches a Fyne-based desktop
     application for managing the gateway, with controls for configuration, start/stop,
-    and status display. Designed for future integration with the modular gateway orchestration layer.
+    status display, and real-time log output. Designed for integration with the modular gateway orchestration layer.
 ==========================================================================================
 */
 
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"fyne.io/fyne/v2"
@@ -29,7 +30,7 @@ func main() {
 	myApp := app.New()
 	w := myApp.NewWindow("Blockchain Websocket Gateway GUI")
 
-	// Input fields
+	//-- Input fields --//
 	nodeCountEntry := widget.NewEntry()
 	nodeCountEntry.SetPlaceHolder("Node count (e.g. 3)")
 
@@ -43,9 +44,22 @@ func main() {
 
 	var gw *gateway.Gateway
 
-	// Start/Stop buttons
+	//-- Log output area --//
+	logOutput := widget.NewMultiLineEntry()
+	logOutput.SetPlaceHolder("Gateway logs will appear here...")
+	logOutput.Disable()
+
+	appendLog := func(msg string) {
+		logOutput.SetText(logOutput.Text + fmt.Sprintf("%s\n", msg))
+	}
+
+	clearLogBtn := widget.NewButton("Clear Log", func() {
+		logOutput.SetText("")
+	})
+
+	//-- Start/Stop buttons --//
 	startBtn := widget.NewButton("Start Gateway", func() {
-		// Validate input
+		//- Validate input -//
 		nodeCount, err := strconv.Atoi(nodeCountEntry.Text)
 		if err != nil || nodeCount <= 0 {
 			dialog.ShowError(
@@ -68,12 +82,14 @@ func main() {
 		gw, gwErr = gateway.NewGateway(cfg)
 		if gwErr != nil {
 			statusLabel.SetText("Status: error")
+			appendLog(fmt.Sprintf("[ERROR] %s", gwErr.Error()))
 			dialog.ShowError(
 				fyne.NewError("Gateway Error", gwErr.Error()), w)
 			return
 		}
 		gw.Start()
 		statusLabel.SetText(gw.Status())
+		appendLog("[INFO] Gateway started.")
 		startBtn.Disable()
 		stopBtn.Enable()
 	})
@@ -81,13 +97,14 @@ func main() {
 		if gw != nil {
 			gw.Stop()
 			statusLabel.SetText(gw.Status())
+			appendLog("[INFO] Gateway stopped.")
 		}
 		stopBtn.Disable()
 		startBtn.Enable()
 	})
-	stopBtn.Disable() // Only enable after start
+	stopBtn.Disable()
 
-	// Layout
+	//-- Layout --//
 	form := container.NewVBox(
 		widget.NewLabel("Blockchain Websocket Gateway"),
 		widget.NewForm(
@@ -97,9 +114,11 @@ func main() {
 		),
 		container.NewHBox(startBtn, stopBtn),
 		statusLabel,
+		widget.NewLabel("Logs:"),
+		container.NewHBox(logOutput, clearLogBtn),
 	)
 
 	w.SetContent(form)
-	w.Resize(fyne.NewSize(500, 300))
+	w.Resize(fyne.NewSize(600, 400))
 	w.ShowAndRun()
 } 
