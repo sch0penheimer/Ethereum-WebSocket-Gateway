@@ -1,64 +1,86 @@
+/*
+==========================================================================================
+  File:        main.go
+  Last Update: 2024-05-18
+  Author:      Haitam Bidiouane (@sh0penheimer)
+  Ownership:   © Haitam Bidiouane. All rights reserved.
+------------------------------------------------------------------------------------------
+  Scope:
+    CLI entry point for the blockchain websocket gateway. Parses command-line flags,
+    initializes the Gateway orchestration layer, and starts the HTTP server for websocket
+    and health endpoints. Designed to be used as a CLI or as a reference for GUI startup.
+==========================================================================================
+*/
+
 package main
 
 import (
 	"flag"
 	"fmt"
+	"os"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/sch0penheimer/eth-ws-server/blockchain"
-	"github.com/sch0penheimer/eth-ws-server/websocket"
+	"github.com/sch0penheimer/eth-ws-server/internal/gateway"
 )
 
+func printUsage() {
+	fmt.Fprintf(os.Stderr, `\nBlockchain Websocket Gateway\n\n`)
+	fmt.Fprintf(os.Stderr, `Usage: %s --nodes N --addresses IP1,IP2,... --ports PORT1,PORT2,...\n`, os.Args[0])
+	fmt.Fprintf(os.Stderr, `\nFlags:\n`)
+	flag.PrintDefaults()
+}
+
 func main() {
-	nodeCount := flag.Int("nodes", 0, "Total number of nodes")
-	nodeAddresses := flag.String("addresses", "", "Comma-separated list of node IP addresses")
-	nodePorts := flag.String("ports", "", "Comma-separated list of node ports")
+	nodeCount := flag.Int("nodes", 0, "Total number of nodes (required)")
+	nodeAddresses := flag.String("addresses", "", "Comma-separated list of node IP addresses (required)")
+	nodePorts := flag.String("ports", "", "Comma-separated list of node ports (required)")
+	help := flag.Bool("help", false, "Show help message")
+	flag.Usage = printUsage
 	flag.Parse()
 
+	if *help {
+		printUsage()
+		os.Exit(0)
+	}
+
 	if *nodeCount <= 0 {
-		log.Fatal("Invalid or missing node count. Use the --nodes flag to specify the total number of nodes.")
+		fmt.Fprintln(os.Stderr, "Error: --nodes must be greater than 0.")
+		printUsage()
+		os.Exit(1)
 	}
 	if *nodeAddresses == "" || *nodePorts == "" {
-		log.Fatal("Node addresses and ports must be provided. Use --addresses and --ports flags.")
+		fmt.Fprintln(os.Stderr, "Error: --addresses and --ports are required.")
+		printUsage()
+		os.Exit(1)
 	}
 
 	addressList := strings.Split(*nodeAddresses, ",")
 	portList := strings.Split(*nodePorts, ",")
 
 	if len(addressList) != *nodeCount || len(portList) != *nodeCount {
-		log.Fatalf("The number of addresses (%d) and ports (%d) must match the node count (%d).", len(addressList), len(portList), *nodeCount)
+		fmt.Fprintf(os.Stderr, "Error: The number of addresses (%d) and ports (%d) must match the node count (%d).\n", len(addressList), len(portList), *nodeCount)
+		printUsage()
+		os.Exit(1)
 	}
 
-	nodeURLs := make([]string, *nodeCount)
-	for i := 0; i < *nodeCount; i++ {
-		if i == 0 {
-			nodeURLs[i] = fmt.Sprintf("ws://%s:%s", addressList[i], portList[i])
-		} else {
-			nodeURLs[i] = fmt.Sprintf("http://%s:%s", addressList[i], portList[i])
-		}
+	cfg := gateway.GatewayConfig{
+		NodeCount:     *nodeCount,
+		NodeAddresses: addressList,
+		NodePorts:     portList,
 	}
-
-	log.Printf("Using the following node URLs: %v", nodeURLs)
-
-	// Initialize the mining controller
-	miningController, err := blockchain.NewMiningController(nodeURLs)
+	gw, err := gateway.NewGateway(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize mining controller: %v", err)
+		log.Fatalf("Failed to initialize gateway: %v", err)
 	}
-
-	// Initialize the blockchain client and WebSocket handler
-	blockFetcher, err := blockchain.NewBlockFetcher(nodeURLs[0])
-	if err != nil {
-		log.Fatalf("Failed to initialize blockchain client: %v", err)
-	}
-	wsHandler := websocket.NewWSHandler(blockFetcher, miningController)
+	gw.Start()
+	log.Println(gw.Status())
 
 	// Set up the HTTP server
 	r := mux.NewRouter()
-	r.HandleFunc("/ws", wsHandler.HandleConnections)
+	r.HandleFunc("/ws", gw.WSHandler().HandleConnections)
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
