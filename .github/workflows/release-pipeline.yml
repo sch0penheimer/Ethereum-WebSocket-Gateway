@@ -29,14 +29,18 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Build Binaries
+      - name: Install Linux GUI build dependencies
+        if: matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+      - name: Build GUI Binaries
         run: |
           mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o dist/eth-ws-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} main.go
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=1 go build -o dist/eth-ws-app-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} main_gui.go
 
       - name: Upload Binaries To The Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
