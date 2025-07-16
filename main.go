@@ -16,6 +16,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 	"log"
 	"net/http"
 	"strings"
@@ -24,24 +26,44 @@ import (
 	"github.com/sch0penheimer/eth-ws-server/internal/gateway"
 )
 
+func printUsage() {
+	fmt.Fprintf(os.Stderr, `\nBlockchain Websocket Gateway\n\n`)
+	fmt.Fprintf(os.Stderr, `Usage: %s --nodes N --addresses IP1,IP2,... --ports PORT1,PORT2,...\n`, os.Args[0])
+	fmt.Fprintf(os.Stderr, `\nFlags:\n`)
+	flag.PrintDefaults()
+}
+
 func main() {
-	nodeCount := flag.Int("nodes", 0, "Total number of nodes")
-	nodeAddresses := flag.String("addresses", "", "Comma-separated list of node IP addresses")
-	nodePorts := flag.String("ports", "", "Comma-separated list of node ports")
+	nodeCount := flag.Int("nodes", 0, "Total number of nodes (required)")
+	nodeAddresses := flag.String("addresses", "", "Comma-separated list of node IP addresses (required)")
+	nodePorts := flag.String("ports", "", "Comma-separated list of node ports (required)")
+	help := flag.Bool("help", false, "Show help message")
+	flag.Usage = printUsage
 	flag.Parse()
 
+	if *help {
+		printUsage()
+		os.Exit(0)
+	}
+
 	if *nodeCount <= 0 {
-		log.Fatal("Invalid or missing node count. Use the --nodes flag to specify the total number of nodes.")
+		fmt.Fprintln(os.Stderr, "Error: --nodes must be greater than 0.")
+		printUsage()
+		os.Exit(1)
 	}
 	if *nodeAddresses == "" || *nodePorts == "" {
-		log.Fatal("Node addresses and ports must be provided. Use --addresses and --ports flags.")
+		fmt.Fprintln(os.Stderr, "Error: --addresses and --ports are required.")
+		printUsage()
+		os.Exit(1)
 	}
 
 	addressList := strings.Split(*nodeAddresses, ",")
 	portList := strings.Split(*nodePorts, ",")
 
 	if len(addressList) != *nodeCount || len(portList) != *nodeCount {
-		log.Fatalf("The number of addresses (%d) and ports (%d) must match the node count (%d).", len(addressList), len(portList), *nodeCount)
+		fmt.Fprintf(os.Stderr, "Error: The number of addresses (%d) and ports (%d) must match the node count (%d).\n", len(addressList), len(portList), *nodeCount)
+		printUsage()
+		os.Exit(1)
 	}
 
 	cfg := gateway.GatewayConfig{
